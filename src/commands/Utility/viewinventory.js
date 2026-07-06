@@ -14,8 +14,8 @@ export async function execute(interaction) {
     const userId = interaction.options.getString('userid');
 
     try {
-        // FIXED URL: The asset type ID (8 for Hats/Accessories) belongs in the path, not query parameters
-        const inventoryUrl = `https://inventory.roblox.com/v2/users/${userId}/inventory/8?limit=10&sortOrder=Desc`;
+        // Corrected format: Passing assetTypes=Hat into the query parameter string explicitly
+        const inventoryUrl = `https://inventory.roblox.com/v2/users/${userId}/inventory?assetTypes=Hat&limit=10&sortOrder=Desc`;
         
         const response = await fetch(inventoryUrl);
         
@@ -30,16 +30,16 @@ export async function execute(interaction) {
         const invData = await response.json();
 
         if (!invData.data || invData.data.length === 0) {
-            return interaction.editReply('📁 This user\'s public inventory has no public accessories/hats visible.');
+            return interaction.editReply('📁 This user\'s public inventory has no public hats or accessories visible.');
         }
 
         const embed = new EmbedBuilder()
             .setTitle(`🎒 Public Inventory Search (User: ${userId})`)
-            .setDescription('Showing the latest public accessories/hats found in this player\'s inventory:')
+            .setDescription('Showing the latest public hats/accessories found in this player\'s inventory:')
             .setColor('#FFAA00')
             .setTimestamp();
 
-        // Loop through the items found and add them to the embed fields
+        // Loop through and display up to 5 items
         invData.data.slice(0, 5).forEach((item, index) => {
             embed.addFields({
                 name: `${index + 1}. ${item.name}`,
