@@ -14,9 +14,8 @@ export async function execute(interaction) {
     const userId = interaction.options.getString('userid');
 
     try {
-        // Official Roblox inventory endpoint for classic assets (Hats, Accessories, etc. - AssetType 8 is Hat)
-        // We look up the first 10 items in their inventory
-        const inventoryUrl = `https://inventory.roblox.com/v2/users/${userId}/inventory?assetTypes=8&limit=10&sortOrder=Desc`;
+        // FIXED URL: The asset type ID (8 for Hats/Accessories) belongs in the path, not query parameters
+        const inventoryUrl = `https://inventory.roblox.com/v2/users/${userId}/inventory/8?limit=10&sortOrder=Desc`;
         
         const response = await fetch(inventoryUrl);
         
@@ -31,7 +30,7 @@ export async function execute(interaction) {
         const invData = await response.json();
 
         if (!invData.data || invData.data.length === 0) {
-            return interaction.editReply('📁 This user\'s public inventory is empty or contains no public accessories/hats.');
+            return interaction.editReply('📁 This user\'s public inventory has no public accessories/hats visible.');
         }
 
         const embed = new EmbedBuilder()
