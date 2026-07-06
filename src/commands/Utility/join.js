@@ -1,7 +1,7 @@
 import { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 
 export const data = new SlashCommandBuilder()
-    .setName('join')
+    .setName('joinplace') // Changed the slash command name here
     .setDescription('Generates a direct launch link to join a Roblox game')
     .addStringOption(option => 
         option.setName('link')
