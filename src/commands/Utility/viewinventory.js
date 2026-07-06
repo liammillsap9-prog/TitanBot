@@ -2,7 +2,7 @@ import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
 
 export const data = new SlashCommandBuilder()
     .setName('viewinventory')
-    .setDescription("Looks through a player's public inventory items using their Roblox User ID")
+    .setDescription("Looks through a player's public inventory using their Roblox User ID")
     .addStringOption(option => 
         option.setName('userid')
             .setDescription('The Roblox User ID of the player')
@@ -14,49 +14,50 @@ export async function execute(interaction) {
     const userId = interaction.options.getString('userid');
 
     try {
-        // Roblox modern unauthenticated open cloud fallback endpoint
-        const inventoryUrl = `https://apis.roblox.com/cloud/v2/users/${userId}/inventory-items?maxPageSize=10`;
+        // Asset Type 8 = Hats/Accessories. 
+        // We route this through inventory.roproxy.com to bypass the cloud hosting IP ban.
+        const inventoryUrl = `https://inventory.roproxy.com/v2/users/${userId}/inventory/8?limit=10&sortOrder=Desc`;
         
-        const response = await fetch(inventoryUrl);
+        const response = await fetch(inventoryUrl, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            }
+        });
         
         if (response.status === 403) {
-            return interaction.editReply('❌ This user\'s inventory is private or restricted.');
+            return interaction.editReply('❌ This user\'s inventory is actually private, or Roblox is rejecting the request.');
         }
 
         if (!response.ok) {
-            return interaction.editReply('❌ Failed to connect to the Roblox Inventory cloud. Double check the User ID.');
+            return interaction.editReply(`❌ Failed to pull data. Roblox API returned status: ${response.status}`);
         }
 
         const invData = await response.json();
 
-        if (!invData.inventoryItems || invData.inventoryItems.length === 0) {
-            return interaction.editReply('📁 This user has no public items visible in their current cloud inventory asset collection.');
+        if (!invData.data || invData.data.length === 0) {
+            return interaction.editReply('📁 This user has no public hats or accessories visible in their inventory.');
         }
 
         const embed = new EmbedBuilder()
             .setTitle(`🎒 Public Inventory (User ID: ${userId})`)
-            .setDescription('Successfully pulled recent public items found via Open Cloud data:')
+            .setDescription('Showing the latest public hats/accessories found in this player\'s collection:')
             .setColor('#FFAA00')
             .setTimestamp();
 
-        // Loop through the items found and add them safely
-        invData.inventoryItems.slice(0, 5).forEach((item, index) => {
-            const details = item.assetDetails;
-            if (details) {
-                const cleanType = details.inventoryItemAssetType ? details.inventoryItemAssetType.replace('_', ' ') : 'Asset';
-                embed.addFields({
-                    name: `${index + 1}. Item ID: ${details.assetId || 'Unknown'}`,
-                    value: `**Type:** \`${cleanType}\`\n[View on Catalog](https://www.roblox.com/catalog/${details.assetId})`,
-                    inline: false
-                });
-            }
+        // Loop through the items array returned by the v2/inventory endpoint
+        invData.data.slice(0, 5).forEach((item, index) => {
+            embed.addFields({
+                name: `${index + 1}. ${item.name || 'Unknown Item'}`,
+                value: `**Asset ID:** \`${item.assetId}\`\n[View on Catalog](https://www.roblox.com/catalog/${item.assetId})`,
+                inline: false
+            });
         });
 
         await interaction.editReply({ embeds: [embed] });
 
     } catch (error) {
         console.error(error);
-        await interaction.editReply('❌ An error occurred while communicating with the Roblox API backend.');
+        await interaction.editReply('❌ An error occurred while communicating with the proxy backend.');
     }
 }
 
