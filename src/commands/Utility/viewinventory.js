@@ -2,7 +2,7 @@ import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
 
 export const data = new SlashCommandBuilder()
     .setName('viewinventory')
-    .setDescription("Looks through a player's public inventory using their Roblox User ID")
+    .setDescription("Looks through a player's public inventory items using their Roblox User ID")
     .addStringOption(option => 
         option.setName('userid')
             .setDescription('The Roblox User ID of the player')
@@ -14,45 +14,49 @@ export async function execute(interaction) {
     const userId = interaction.options.getString('userid');
 
     try {
-        // Corrected format: Passing assetTypes=Hat into the query parameter string explicitly
-        const inventoryUrl = `https://inventory.roblox.com/v2/users/${userId}/inventory?assetTypes=Hat&limit=10&sortOrder=Desc`;
+        // Roblox modern unauthenticated open cloud fallback endpoint
+        const inventoryUrl = `https://apis.roblox.com/cloud/v2/users/${userId}/inventory-items?maxPageSize=10`;
         
         const response = await fetch(inventoryUrl);
         
         if (response.status === 403) {
-            return interaction.editReply('❌ This user\'s inventory is private or restricted. The bot cannot view it.');
+            return interaction.editReply('❌ This user\'s inventory is private or restricted.');
         }
 
         if (!response.ok) {
-            return interaction.editReply('❌ Failed to pull inventory data. Make sure the User ID is valid.');
+            return interaction.editReply('❌ Failed to connect to the Roblox Inventory cloud. Double check the User ID.');
         }
 
         const invData = await response.json();
 
-        if (!invData.data || invData.data.length === 0) {
-            return interaction.editReply('📁 This user\'s public inventory has no public hats or accessories visible.');
+        if (!invData.inventoryItems || invData.inventoryItems.length === 0) {
+            return interaction.editReply('📁 This user has no public items visible in their current cloud inventory asset collection.');
         }
 
         const embed = new EmbedBuilder()
-            .setTitle(`🎒 Public Inventory Search (User: ${userId})`)
-            .setDescription('Showing the latest public hats/accessories found in this player\'s inventory:')
+            .setTitle(`🎒 Public Inventory (User ID: ${userId})`)
+            .setDescription('Successfully pulled recent public items found via Open Cloud data:')
             .setColor('#FFAA00')
             .setTimestamp();
 
-        // Loop through and display up to 5 items
-        invData.data.slice(0, 5).forEach((item, index) => {
-            embed.addFields({
-                name: `${index + 1}. ${item.name}`,
-                value: `**Asset ID:** \`${item.assetId}\`\n[View on Roblox](https://www.roblox.com/catalog/${item.assetId})`,
-                inline: false
-            });
+        // Loop through the items found and add them safely
+        invData.inventoryItems.slice(0, 5).forEach((item, index) => {
+            const details = item.assetDetails;
+            if (details) {
+                const cleanType = details.inventoryItemAssetType ? details.inventoryItemAssetType.replace('_', ' ') : 'Asset';
+                embed.addFields({
+                    name: `${index + 1}. Item ID: ${details.assetId || 'Unknown'}`,
+                    value: `**Type:** \`${cleanType}\`\n[View on Catalog](https://www.roblox.com/catalog/${details.assetId})`,
+                    inline: false
+                });
+            }
         });
 
         await interaction.editReply({ embeds: [embed] });
 
     } catch (error) {
         console.error(error);
-        await interaction.editReply('❌ An error occurred while communicating with the Roblox Inventory API.');
+        await interaction.editReply('❌ An error occurred while communicating with the Roblox API backend.');
     }
 }
 
