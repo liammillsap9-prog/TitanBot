@@ -7,12 +7,12 @@ export const data = new SlashCommandBuilder()
 export async function execute(interaction) {
     const now = new Date();
     
-    // Forces the server to translate the time into your specific time zone
+    // Formats the time to perfectly match your Mountain Time clock
     const timeString = now.toLocaleTimeString('en-US', { 
         hour: '2-digit', 
         minute: '2-digit', 
         second: '2-digit',
-        timeZone: 'America/New_York' // Change this if you aren't in Eastern Time!
+        timeZone: 'America/Denver'
     });
     
     const dateString = now.toLocaleDateString('en-US', { 
@@ -20,7 +20,7 @@ export async function execute(interaction) {
         year: 'numeric', 
         month: 'long', 
         day: 'numeric',
-        timeZone: 'America/New_York'
+        timeZone: 'America/Denver'
     });
 
     const embed = new EmbedBuilder()
